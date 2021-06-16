@@ -234,24 +234,28 @@ defmodule Sigaws do
             key
         end
 
-      {:ok, %{
-        req_path: req_path,
-        method: method,
-        normalize_path: normalize_path,
-        params: params,
-        headers: headers,
-        body: body,
-        signed_at: signed_at_amz_dt,
-        region: rg,
-        service: sv,
-        access_key: creds[:access_key],
-        signing_key: signing_key
-      }}
+      {:ok,
+       %{
+         req_path: req_path,
+         method: method,
+         normalize_path: normalize_path,
+         params: params,
+         headers: headers,
+         body: body,
+         signed_at: signed_at_amz_dt,
+         region: rg,
+         service: sv,
+         access_key: creds[:access_key],
+         signing_key: signing_key
+       }}
     end
   end
 
-  defp get_params(_qs, _params, keyword_params) when length(keyword_params) > 0, do: keyword_params
-  defp get_params(qs, params, _keyword_params), do: (qs || "") |> URI.decode_query() |> Map.merge(params)
+  defp get_params(_qs, _params, keyword_params) when length(keyword_params) > 0,
+    do: keyword_params
+
+  defp get_params(qs, params, _keyword_params),
+    do: (qs || "") |> URI.decode_query() |> Map.merge(params)
 
   defp uri_host(%URI{scheme: "https", host: h, port: 443}), do: h
   defp uri_host(%URI{scheme: "http", host: h, port: 80}), do: h
