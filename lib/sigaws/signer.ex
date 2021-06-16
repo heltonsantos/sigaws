@@ -92,7 +92,7 @@ defmodule Sigaws.Signer do
       "X-Amz-SignedHeaders" => headers_to_sign
     }
 
-    params_to_sign = params |> Map.merge(sig_data)
+    params_to_sign = if Keyword.keyword?(params), do: params ++ to_keyword(sig_data), else: Map.merge(params, sig_data)
 
     c_req_path = c_req_path(req_path, normalize_path)
     c_qs = c_qs(params_to_sign)
@@ -125,7 +125,7 @@ defmodule Sigaws.Signer do
     end
   end
 
-  defp c_qs(%{} = params) do
+  defp c_qs(params) do
     params |> URI.encode_query() |> String.replace("+", "%20")
   end
 
@@ -189,4 +189,6 @@ defmodule Sigaws.Signer do
   defp payload_hash(:unsigned), do: "UNSIGNED-PAYLOAD"
   defp payload_hash({:content_hash, hash}), do: hash
   defp payload_hash(payload), do: payload |> Util.hexdigest()
+
+  defp to_keyword(%{} = map), do: Keyword.new(map, fn {k,v} -> {String.to_atom(k), v} end)
 end
