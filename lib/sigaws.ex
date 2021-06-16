@@ -209,6 +209,7 @@ defmodule Sigaws do
     with opts_map = Map.new(opts),
          {:ok, method} <- method_opt(opts_map),
          {:ok, params} <- qp_opt(opts_map),
+         {:ok, keyword_params} <- kwp_opt(opts_map),
          {:ok, headers} <- headers_opt(opts_map),
          {:ok, body} <- body_opt(opts_map),
          {:ok, signed_at_amz_dt} <- signed_at_opt(opts_map),
@@ -220,7 +221,7 @@ defmodule Sigaws do
       %URI{path: req_path, query: qs} = uri = URI.parse(url)
       req_path = if req_path, do: req_path, else: "/"
 
-      params = (qs || "") |> URI.decode_query() |> Map.merge(params)
+      params = get_params(qs, params, keyword_params)
       headers = headers |> Util.downcase_keys() |> Map.put_new("host", uri_host(uri))
 
       signing_key =
@@ -233,21 +234,28 @@ defmodule Sigaws do
             key
         end
 
-      {:ok, %{
-        req_path: req_path,
-        method: method,
-        normalize_path: normalize_path,
-        params: params,
-        headers: headers,
-        body: body,
-        signed_at: signed_at_amz_dt,
-        region: rg,
-        service: sv,
-        access_key: creds[:access_key],
-        signing_key: signing_key
-      }}
+      {:ok,
+       %{
+         req_path: req_path,
+         method: method,
+         normalize_path: normalize_path,
+         params: params,
+         headers: headers,
+         body: body,
+         signed_at: signed_at_amz_dt,
+         region: rg,
+         service: sv,
+         access_key: creds[:access_key],
+         signing_key: signing_key
+       }}
     end
   end
+
+  defp get_params(_qs, _params, keyword_params) when length(keyword_params) > 0,
+    do: keyword_params
+
+  defp get_params(qs, params, _keyword_params),
+    do: (qs || "") |> URI.decode_query() |> Map.merge(params)
 
   defp uri_host(%URI{scheme: "https", host: h, port: 443}), do: h
   defp uri_host(%URI{scheme: "http", host: h, port: 80}), do: h
@@ -276,6 +284,11 @@ defmodule Sigaws do
   defp qp_opt(%{params: p}) when is_list(p), do: {:ok, list_to_map(p)}
   defp qp_opt(%{params: _}), do: @qp_error
   defp qp_opt(_), do: {:ok, %{}}
+
+  @kwp_error {:error, :invalid_input, "keyword_params"}
+  defp kwp_opt(%{keyword_params: p}) when is_list(p), do: {:ok, p}
+  defp kwp_opt(%{keyword_params: _}), do: @kwp_error
+  defp kwp_opt(_), do: {:ok, []}
 
   @headers_error {:error, :invalid_input, "headers"}
   defp headers_opt(%{headers: %{} = h}), do: {:ok, h}
